@@ -1,30 +1,15 @@
 """
-Dining Philosophers Problem
-CPSC 5042 - Computer Systems Principles II
+Dining Philosophers — Silberschatz monitor solution
+CPSC 5042 — OS Concepts 10th ed., Ch. 7
 
-Solution: Monitor with per-philosopher semaphores
-(Silberschatz, Galvin & Gagne — Operating System Concepts, 10th ed., Ch. 7)
+Synchronization:
+  mutex       Semaphore(1)  guards all state[] transitions
+  self_sem[i] Semaphore(0)  blocks philosopher i when hungry but unable to eat
 
-Synchronization mechanisms:
-  - mutex              : Semaphore(1) — protects all state[] changes (mutual exclusion)
-  - self_sem[i]        : Semaphore(0) per philosopher — blocks philosopher i when
-                         hungry but unable to eat (both chopsticks not free)
+Deadlock-free:  all state changes serialised through mutex; circular wait impossible.
+Starvation-free: putdown() calls test() on both neighbours so no philosopher is skipped.
 
-Deadlock prevention:
-  All state transitions are serialised through mutex. A philosopher only moves to
-  EATING after the mutex confirms both neighbours are not eating, so a circular-wait
-  condition cannot form.
-
-Starvation prevention:
-  When philosopher i finishes eating (putdown), it explicitly calls test() on both
-  neighbours. A hungry neighbour whose other side is now free will be woken
-  immediately. No philosopher can be indefinitely skipped.
-
-Usage:
-  python dining_philosophers.py [num_philosophers] [num_rounds]
-
-  num_philosophers : number of philosophers (default 5)
-  num_rounds       : eat/think cycles per philosopher (default 3)
+Usage: python dining_philosophers.py [num_philosophers] [num_rounds]
 """
 
 import sys
@@ -36,11 +21,11 @@ THINKING = "THINKING"
 HUNGRY   = "HUNGRY"
 EATING   = "EATING"
 
-# ── Shared state (initialised in main, passed into each thread) ───────────────
-n         = 0
-state     = []          # state[i] in {THINKING, HUNGRY, EATING}
-mutex     = None        # Semaphore(1) — guards state[]
-self_sem  = []          # self_sem[i] = Semaphore(0); philosopher i blocks here
+# Shared state — initialised in main()
+n        = 0
+state    = []   # state[i] in {THINKING, HUNGRY, EATING}
+mutex    = None # Semaphore(1) — guards state[]
+self_sem = []   # self_sem[i] = Semaphore(0); philosopher i blocks here when hungry
 
 
 def test(i: int) -> None:
@@ -131,11 +116,7 @@ def main() -> None:
     print_lock = threading.Lock()
 
     threads = [
-        threading.Thread(
-            target=philosopher,
-            args=(i, rounds, print_lock),
-            daemon=True,
-        )
+        threading.Thread(target=philosopher, args=(i, rounds, print_lock))
         for i in range(n)
     ]
 
